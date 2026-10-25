@@ -198,7 +198,7 @@ export default function Home() {
       </main>
       <footer>
         <Brand />
-        <p>Made for the journey ahead.</p>
+        <span>Created by Almila Meng</span>
         <span>InternTrack · Local demo</span>
       </footer>
     </div>
