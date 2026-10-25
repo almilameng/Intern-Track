@@ -1,0 +1,28 @@
+node_modules/
+.next/
+.pnpm-*/
+.browsers/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.log
+.env*
+
+# Secrets and local credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+credentials*.json
+secrets*.json
+
+# Build, coverage, deployment, and editor artifacts
+out/
+coverage/
+.vercel/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+next-env.d.ts

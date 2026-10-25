@@ -1,0 +1,5 @@
+storeDir: .pnpm-store
+cacheDir: .pnpm-cache
+allowBuilds:
+  unrs-resolver: true
+  sharp: true
