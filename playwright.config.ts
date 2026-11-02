@@ -12,10 +12,21 @@ export default defineConfig({
       use: { ...devices["iPhone 13"], defaultBrowserType: "chromium" },
     },
   ],
-  webServer: {
-    command: "node node_modules/next/dist/bin/next start",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 60000,
-  },
+  webServer: [
+    {
+      command: "node scripts/mock-ai.mjs",
+      url: "http://127.0.0.1:4010",
+      reuseExistingServer: false,
+    },
+    {
+      command: "node node_modules/next/dist/bin/next start",
+      url: "http://localhost:3000",
+      reuseExistingServer: false,
+      env: {
+        OPENAI_BASE_URL: "http://127.0.0.1:4010/v1",
+        OPENAI_API_KEY: "test-only-key",
+      },
+      timeout: 60000,
+    },
+  ],
 });

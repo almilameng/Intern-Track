@@ -18,11 +18,30 @@ export async function saveApplication(
     application.company.length > 120 ||
     application.position.length > 160 ||
     application.location.length > 160 ||
-    application.notes.length > 10000
+    application.notes.length > 10000 ||
+    (application.jobDescription?.length ?? 0) > 15000 ||
+    (application.appliedOn &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(application.appliedOn)) ||
+    (application.interviewAt &&
+      (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(application.interviewAt) ||
+        Number.isNaN(Date.parse(application.interviewAt)))) ||
+    (application.interviewAt && !application.interviewTimezone) ||
+    (application.interviewTimezone?.length ?? 0) > 80
   ) {
     return { error: "Check the application details and try again." };
   }
   const sql = database();
+  if (application.interviewTimezone) {
+    try {
+      new Intl.DateTimeFormat("en", {
+        timeZone: application.interviewTimezone,
+      });
+    } catch {
+      return {
+        error: "Enter a valid time zone, for example America/New_York.",
+      };
+    }
+  }
   try {
     const rows = creating
       ? await sql`INSERT INTO applications (id, user_id, data) VALUES (${application.id}, ${session.user.id}, ${JSON.stringify(application)}::jsonb) ON CONFLICT DO NOTHING RETURNING id`

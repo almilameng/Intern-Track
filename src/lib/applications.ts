@@ -14,6 +14,10 @@ export type Application = {
   deadline: string;
   status: Status;
   notes: string;
+  jobDescription?: string;
+  appliedOn?: string;
+  interviewAt?: string;
+  interviewTimezone?: string;
 };
 export const storageKey = "interntrack.applications.v1";
 export function validApplications(value: unknown): value is Application[] {
@@ -27,6 +31,12 @@ export function validApplications(value: unknown): value is Application[] {
           (k) => typeof a[k] === "string",
         ) &&
         statuses.includes(a.status) &&
+        [
+          "jobDescription",
+          "appliedOn",
+          "interviewAt",
+          "interviewTimezone",
+        ].every((k) => a[k] === undefined || typeof a[k] === "string") &&
         (!a.deadline ||
           (/^\d{4}-\d{2}-\d{2}$/.test(a.deadline) &&
             !Number.isNaN(Date.parse(a.deadline)))),

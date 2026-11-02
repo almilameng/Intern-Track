@@ -38,13 +38,21 @@ const blank = {
   deadline: "",
   status: "Wishlist" as Status,
   notes: "",
+  jobDescription: "",
+  appliedOn: "",
+  interviewAt: "",
+  interviewTimezone: "America/New_York",
 };
 export default function Dashboard({
   initialApplications,
   userName,
+  pro,
+  demo,
 }: {
   initialApplications: Application[];
   userName: string;
+  pro: boolean;
+  demo: boolean;
 }) {
   const [applications, setApplications] =
     useState<Application[]>(initialApplications);
@@ -67,7 +75,14 @@ export default function Dashboard({
   }
   function openForm(app?: Application) {
     setEditing(app ?? null);
-    setForm(app ? { ...app } : { ...blank });
+    setForm(
+      app
+        ? { ...blank, ...app }
+        : {
+            ...blank,
+            interviewTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
+    );
     dialog.current?.showModal();
   }
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -178,6 +193,12 @@ export default function Dashboard({
         <Brand />
         <div className="workspace-label">YOUR WORKSPACE</div>
         <nav aria-label="Workspace">
+          <Link href="/matches" className="nav-item">
+            <Sparkles size={19} /> Resume & matches
+          </Link>
+          <Link href="/billing" className="nav-item">
+            Your plan
+          </Link>
           <button
             className={view === "all" ? "nav-item active" : "nav-item"}
             onClick={() => setView("all")}
@@ -209,7 +230,10 @@ export default function Dashboard({
             <span className="avatar">Y</span>
             <div>
               <strong>{userName}</strong>
-              <small>Your account · Free plan</small>
+              <small>
+                {demo ? "Shared demo" : "Your account"} · {pro ? "Pro" : "Free"}{" "}
+                plan
+              </small>
             </div>
             <span className="online-dot" />
           </div>
@@ -333,6 +357,31 @@ export default function Dashboard({
             </button>
           </div>
           <section className="applications-panel">
+            {applications.some((a) => a.interviewAt) && (
+              <section
+                className="interview-schedule"
+                aria-label="Interview schedule"
+              >
+                <h2>Interview schedule</h2>
+                <ul>
+                  {applications
+                    .filter((a) => a.interviewAt)
+                    .sort((a, b) =>
+                      a.interviewAt!.localeCompare(b.interviewAt!),
+                    )
+                    .map((a) => (
+                      <li key={a.id}>
+                        <strong>
+                          {a.company} · {a.position}
+                        </strong>
+                        <br />
+                        {a.interviewAt!.replace("T", " at ")} ·{" "}
+                        {a.interviewTimezone}
+                      </li>
+                    ))}
+                </ul>
+              </section>
+            )}
             <div className="panel-heading">
               <div>
                 <h2>
@@ -390,6 +439,7 @@ export default function Dashboard({
                     <th>Location</th>
                     <th>Status</th>
                     <th>Deadline</th>
+                    <th>Applied / Interview</th>
                     <th className="text-right">Actions</th>
                   </tr>
                 </thead>
@@ -439,6 +489,20 @@ export default function Dashboard({
                                   : `In ${daysUntil(a.deadline)} days`}
                             </small>
                           )}
+                      </td>
+                      <td>
+                        <small>
+                          {a.appliedOn
+                            ? `Applied ${deadlineLabel(a.appliedOn)}`
+                            : "Not recorded"}
+                        </small>
+                        {a.interviewAt && (
+                          <p className="date-text">
+                            Interview: {a.interviewAt.replace("T", " at ")}
+                            <br />
+                            <small>{a.interviewTimezone}</small>
+                          </p>
+                        )}
                       </td>
                       <td>
                         <div className="row-actions">
@@ -617,6 +681,49 @@ export default function Dashboard({
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   placeholder="Contacts, next steps, or things to remember..."
+                />
+              </label>
+              <label>
+                Applied on
+                <input
+                  type="date"
+                  value={form.appliedOn}
+                  onChange={(e) =>
+                    setForm({ ...form, appliedOn: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Interview date and time
+                <input
+                  type="datetime-local"
+                  value={form.interviewAt}
+                  onChange={(e) =>
+                    setForm({ ...form, interviewAt: e.target.value })
+                  }
+                />
+              </label>
+              <label className="full-width">
+                Interview time zone
+                <input
+                  value={form.interviewTimezone}
+                  maxLength={80}
+                  placeholder="America/New_York"
+                  onChange={(e) =>
+                    setForm({ ...form, interviewTimezone: e.target.value })
+                  }
+                />
+              </label>
+              <label className="full-width">
+                Job description
+                <textarea
+                  rows={7}
+                  maxLength={15000}
+                  value={form.jobDescription}
+                  onChange={(e) =>
+                    setForm({ ...form, jobDescription: e.target.value })
+                  }
+                  placeholder="Paste the responsibilities and qualifications here to match this role against your resume."
                 />
               </label>
             </div>

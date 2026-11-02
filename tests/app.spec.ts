@@ -38,6 +38,9 @@ test("signup, application CRUD, logout, and login persist across browsers", asyn
     .fill("Engineering Intern");
   await page.getByLabel("Location", { exact: true }).fill("Remote");
   await page.getByLabel("Deadline", { exact: true }).fill("2027-05-20");
+  await page.getByLabel("Applied on", { exact: true }).fill("2027-05-01");
+  await page.getByLabel("Interview date and time").fill("2027-05-12T14:30");
+  await page.getByLabel("Interview time zone").fill("America/New_York");
   await page.getByLabel("Status", { exact: true }).selectOption("Applied");
   await page
     .getByLabel("Notes", { exact: true })
@@ -49,6 +52,9 @@ test("signup, application CRUD, logout, and login persist across browsers", asyn
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.reload();
   await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(
+    page.getByRole("region", { name: "Interview schedule" }),
+  ).toContainText("2027-05-12 at 14:30");
   await page.getByLabel("Search applications").fill("campus recruiter");
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page
@@ -180,4 +186,109 @@ test("another account cannot read, update, or delete an owner's applications", a
   });
   expect(await unauthenticated.text()).toContain("session expired");
   await otherContext.close();
+});
+
+test("resume uploads, match persistence, stale detection, and removal", async ({
+  page,
+}) => {
+  await signup(page);
+  await page
+    .getByRole("button", { name: "Add your first application" })
+    .click();
+  await page.getByLabel("Company", { exact: false }).fill("Example Analytics");
+  await page.getByLabel("Position", { exact: false }).fill("Data Intern");
+  await page
+    .getByLabel("Job description")
+    .fill(
+      "We seek a computer science student who knows Python and SQL to build data dashboards, document findings, and collaborate with analysts. Cloud experience is a plus.",
+    );
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Add application" })
+    .click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await page.getByRole("link", { name: "Resume & matches" }).click();
+  await page
+    .getByLabel("Resume file")
+    .setInputFiles({
+      name: "sample.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "BS Computer Science. Python and SQL. Built data dashboards.",
+      ),
+    });
+  await page.getByRole("button", { name: "Upload & analyze resume" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Your resume profile" }),
+  ).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button", { name: "Match my resume" }).click();
+  await expect(page.getByText("Strong match", { exact: true })).toBeVisible({
+    timeout: 20000,
+  });
+  await page.reload();
+  await expect(page.getByText("Strong match", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: `test-results/matches-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("link", { name: "Tracker", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edit Example Analytics Data Intern" })
+    .click();
+  await page
+    .getByLabel("Job description")
+    .fill(
+      "We seek a mechanical engineering student with CAD and manufacturing experience to design and test mechanical assemblies and document prototype results.",
+    );
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await page.getByRole("link", { name: "Resume & matches" }).click();
+  await expect(
+    page.getByText("Details changed—run a fresh match"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Strong match", { exact: true }),
+  ).not.toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Remove resume & matches" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Start with your resume" }),
+  ).toBeVisible();
+});
+
+test("demo account has Pro access and rejects invalid uploads", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("demo@demo.com");
+  await page.getByLabel("Password").fill("password123!");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.getByRole("link", { name: "Your plan" }).click();
+  await expect(
+    page.getByText("Demo access is already included. No payment needed."),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Resume & matches" }).click();
+  await expect(page.getByText(/30 AI requests per day/)).toBeVisible();
+  await page
+    .getByLabel("Resume file")
+    .setInputFiles({
+      name: "fake.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("not a PDF"),
+    });
+  await page
+    .getByRole("button", { name: /Upload & analyze resume|Replace resume/ })
+    .click();
+  await expect(page.locator(".error-banner")).toContainText("not a valid PDF");
+  const rejected = await page.request.post("/api/matches", {
+    headers: { origin: "https://untrusted.example" },
+    data: { applicationId: "anything" },
+  });
+  expect(rejected.status()).toBe(403);
 });

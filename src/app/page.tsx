@@ -35,9 +35,9 @@ export default function Home() {
               <span>All in one place.</span>
             </h1>
             <p>
-              From your first application to your first offer. Organize your
-              internship search, stay ahead of deadlines, and make your next
-              move with confidence.
+              From your first application to your first offer. Match your resume
+              to jobs you add, organize your internship search, and keep
+              deadlines and interviews in sight.
             </p>
             <Link href="/signup" className="button">
               Start tracking for free <ArrowRight size={18} />
@@ -135,8 +135,8 @@ export default function Home() {
               },
               {
                 icon: MoveUpRight,
-                title: "See how far you’ve come",
-                text: "From wishlist to offer, follow your progress and celebrate the small wins along the way.",
+                title: "Know where your experience fits",
+                text: "Upload your resume and compare it with job descriptions you add. See relevant strengths, qualification gaps, and practical next steps.",
               },
             ].map(({ icon: Icon, title, text }) => (
               <article key={title} className="feature-card">
@@ -170,12 +170,12 @@ export default function Home() {
             <div className="price">
               $0 <span>/ free</span>
             </div>
-            <p>Everything you need to get organized.</p>
+            <p>Start tracking and try 5 AI requests per day.</p>
             <ul>
               {[
                 "Applications saved to your account",
                 "Search, filters, and progress overview",
-                "Deadlines and personal notes",
+                "Interview dates, deadlines, and personal notes",
               ].map((t) => (
                 <li key={t}>
                   <Check size={17} />
@@ -187,6 +187,11 @@ export default function Home() {
               Get started <ArrowRight size={17} />
             </Link>
             <small>Free account. No payment required.</small>
+            <p>
+              Searching more actively? Pro includes 30 AI requests per day to
+              compare more roles.
+            </p>
+            <Link href="/billing">Explore Pro</Link>
           </div>
         </section>
         <section className="final-cta">

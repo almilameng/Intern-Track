@@ -49,6 +49,18 @@ pnpm test:e2e
 
 Browser tests run against a production build at localhost:3000 and the configured database. They create clearly labeled automated test accounts under example.com, not real user accounts for submission evidence. Use a development database branch for repeated tests. Tests cover desktop/mobile CRUD, cross-browser login persistence, logout, wrong passwords, and authenticated/unauthenticated attempts to mutate another user's records.
 
-## Remaining assignment features
+## Resume matching and plans
 
-Resume uploads and AI matching against user-added job descriptions, interview scheduling, Stripe billing, the pre-created paid demo account, and the final submission document are not implemented yet. These should not be represented as live functionality until configured and tested.
+The /matches workspace accepts PDF resumes (up to 6 pages, 2 MB) and TXT resumes (up to 24,000 characters, 2 MB). A server-side OpenAI Responses request extracts an account-owned profile. The original upload is not saved in Neon. The user is told that uploading sends their file to OpenAI; requests use store:false. This does not override the provider's own retention policies.
+
+Applications can include job descriptions, dates applied, and interview times with IANA time zones. Matches compare the saved profile to one of the user's own job descriptions. Stored results include the resume version and job description, and outdated results are labeled for re-analysis. Users can delete their saved profile and matches.
+
+Configure OPENAI_API_KEY as a server-only environment secret. OPENAI_MODEL optionally overrides gpt-5-mini. Free accounts have 5 AI requests per UTC day; Pro/demo accounts have 30. A global 200-request daily capacity protects initial hosting costs. Attempts that reach the provider count toward usage, including failed analyses.
+
+Run node --env-file=.env.local --import tsx scripts/seed-demo.ts after migration to create demo@demo.com / password123! with verified email and server-owned Pro access. Demo data is clearly labeled fictional and shared between demo visitors.
+
+Stripe checkout, subscription webhooks, and the customer portal are implemented. They require STRIPE_SECRET_KEY, STRIPE_PRICE_ID (recurring), and STRIPE_WEBHOOK_SECRET before checkout becomes available. See docs/stripe-setup.md. Real Stripe checkout cannot be verified until the owner configures their account.
+
+Browser tests use a local mock OpenAI service with a dummy key, separate from live-provider smoke tests. Do not set OPENAI_BASE_URL to this mock in Vercel. The mock script is only started by Playwright.
+
+The submission PDF is a draft until it includes the actual Neon users-table screenshot after several real signups and payment setup is complete.
