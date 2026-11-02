@@ -1,48 +1,40 @@
 # InternTrack
 
-A first working internship and job application tracker built with Next.js App Router, TypeScript, Tailwind CSS, and Lucide icons.
+Internship application tracking with Next.js, Better Auth, and Neon PostgreSQL.
 
-## Preview locally
+## Local setup
 
-Open a terminal in this InternTrack folder, then run:
+Install dependencies with `pnpm install`. Create an ignored `.env.local` in the project root:
 
-```powershell
-pnpm dev
+```env
+DATABASE_URL="your Neon PostgreSQL connection URL"
+BETTER_AUTH_SECRET="a randomly generated secret of at least 32 characters"
+BETTER_AUTH_URL="http://localhost:3000"
 ```
 
-Open http://localhost:3000 for the landing page or http://localhost:3000/dashboard for the tracker. Keep the terminal open; press Ctrl+C to stop the server. If port 3000 is busy, use the address printed in the terminal.
+Never commit this file. Generate the secret with a password manager or Node's cryptographic random generator. Use the Neon connection's TLS settings.
 
-Dependencies are already installed. After downloading a fresh copy, run `pnpm install` first.
+Run `pnpm db:migrate`, then `pnpm dev`. Open http://localhost:3000 and create an account. The migration creates Better Auth's user, account, session, verification, and rate-limit tables plus the application's `applications` table. It is safe to rerun for the current schema; it does not drop existing tables.
 
-### If commands are missing in your own terminal
+## What works
 
-The build environment has Node.js 24 and pnpm, but not npm. Your regular terminal may have a different PATH. If `node` or `pnpm` is not recognized, install Node.js LTS from https://nodejs.org (includes npm), reopen your terminal, then run:
+- Signup, login, logout, hashed passwords, database-backed sessions, and persistent auth rate limits.
+- A protected dashboard with application creation, editing, deletion, search, status filters, deadlines, and JSON export.
+- Every application belongs to one account. Server-side ownership checks protect reads and mutations.
+- Application data survives logout and is accessible from other browsers after login.
+- Empty accounts start empty; fictional sample applications are not inserted into real accounts.
 
-```powershell
-npm install --global pnpm@11
-pnpm install
-pnpm dev
-```
+Email verification is currently disabled. Password reset emails are not configured yet. Existing browser-only demo data is not automatically imported into an account; it remains in the browser's original localStorage.
 
-Use Node.js 24 LTS or later. No database, API keys, payment account, or authentication setup is needed.
+## Deployment
 
-## Included
+In Vercel, connect Neon to the project, then configure:
 
-- Responsive landing page, feature cards, and free pricing preview.
-- Dashboard summary cards, application table, and upcoming deadlines view.
-- Add/edit dialog with company, position, location, deadline, status, and notes.
-- Delete confirmation, keyword search (including notes), and status filters.
-- Six clearly fictional example applications on the first visit.
-- Browser localStorage persistence and JSON backup export.
-- Keyboard-accessible native dialogs and loading, empty, and storage-error states.
+- `DATABASE_URL`: supplied by the Neon integration. Verify this exact variable name exists; do not expose it with a NEXT_PUBLIC prefix.
+- `BETTER_AUTH_SECRET`: a random secret of at least 32 characters.
+- `BETTER_AUTH_URL`: `https://intern-track-inky.vercel.app` for Production. Use the exact preview deployment origin for Preview; do not point previews at production auth.
 
-Company and position are required. Other fields are optional. Statuses are Wishlist, Applied, Interview, Offer, and Rejected. Upcoming deadlines show active applications due today through seven days from today, using your local date. In progress counts Applied and Interview.
-
-## Data and limitations
-
-Data is stored under `interntrack.applications.v1` in this browser for this site's origin. It survives refreshes, but does not sync between browsers, devices, or different localhost ports. Clearing site data removes applications. Deleting all applications intentionally leaves an empty workspace; it does not regenerate examples. Use Export to download a JSON backup. Backup import is not included yet. Multiple open tabs do not synchronize live; use one tab for edits.
-
-No Neon, Stripe, login, backend persistence, email reminders, or paid plan is connected. Pricing describes this free local demo. Landing-page preview figures are illustrative; dashboard counts reflect your actual local data.
+Apply `pnpm db:migrate` to the intended database before deployment. For Neon preview branches, migrations must also be applied there before using the preview. The project does not automatically run migrations during builds. Redeploy after changing environment settings.
 
 ## Checks
 
@@ -50,28 +42,13 @@ No Neon, Stripe, login, backend persistence, email reminders, or paid plan is co
 pnpm lint
 pnpm typecheck
 pnpm build
-```
-
-For browser tests, install the test browser inside this project and run:
-
-```powershell
 $env:PLAYWRIGHT_BROWSERS_PATH = "$PWD\.browsers"
 pnpm exec playwright install chromium
-pnpm build
 pnpm test:e2e
 ```
 
-Tests cover desktop and mobile: landing navigation, adding/editing/deleting, refresh persistence, search and filters, deletion cancellation, empty storage, corrupted storage, and keyboard dialog dismissal. Tests use isolated browser contexts, so they do not modify your personal browser's applications.
+Browser tests run against a production build at localhost:3000 and the configured database. They create clearly labeled automated test accounts under example.com, not real user accounts for submission evidence. Use a development database branch for repeated tests. Tests cover desktop/mobile CRUD, cross-browser login persistence, logout, wrong passwords, and authenticated/unauthenticated attempts to mutate another user's records.
 
-To preview a production build: `pnpm build`, then `pnpm start`.
+## Remaining assignment features
 
-## Project map
-
-- `src/app/page.tsx`: landing page
-- `src/app/dashboard/page.tsx`: dashboard route
-- `src/components/dashboard.tsx`: interactive tracker and forms
-- `src/lib/applications.ts`: types, data validation, sample data, and dates
-- `src/app/globals.css`: Tailwind import and responsive visual styles
-- `tests/app.spec.ts`: browser tests
-
-Next steps can add authentication, database persistence, and billing separately.
+Resume uploads and AI matching against user-added job descriptions, interview scheduling, Stripe billing, the pre-created paid demo account, and the final submission document are not implemented yet. These should not be represented as live functionality until configured and tested.

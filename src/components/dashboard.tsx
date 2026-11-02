@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { authClient } from "@/lib/auth-client";
+import { saveApplication, deleteApplication } from "@/app/dashboard/actions";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -26,9 +28,6 @@ import {
   type Application,
   type Status,
   statuses,
-  storageKey,
-  validApplications,
-  demoApplications,
   deadlineLabel,
   daysUntil,
 } from "@/lib/applications";
@@ -40,9 +39,17 @@ const blank = {
   status: "Wishlist" as Status,
   notes: "",
 };
-export default function Dashboard() {
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [ready, setReady] = useState(false);
+export default function Dashboard({
+  initialApplications,
+  userName,
+}: {
+  initialApplications: Application[];
+  userName: string;
+}) {
+  const [applications, setApplications] =
+    useState<Application[]>(initialApplications);
+  const [busy, setBusy] = useState(false);
+  const ready = true;
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
@@ -53,37 +60,8 @@ export default function Dashboard() {
   const [deleting, setDeleting] = useState<Application | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const deleteDialog = useRef<HTMLDialogElement>(null);
-  // Read browser-only storage after hydration so server and client initially agree.
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw !== null) {
-        const data: unknown = JSON.parse(raw);
-        if (!validApplications(data)) throw new Error("Invalid data");
-        setApplications(data);
-      } else {
-        const demo = demoApplications();
-        setApplications(demo);
-        localStorage.setItem(storageKey, JSON.stringify(demo));
-      }
-    } catch {
-      setError(
-        "Your saved data could not be loaded. Existing storage has not been overwritten. You can export this session before leaving.",
-      );
-    }
-    setReady(true);
-  }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
   function commit(next: Application[], message: string) {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
-      setError("");
-    } catch {
-      setError(
-        "Browser storage is unavailable or full. Changes are kept in this session only. Export your applications before leaving.",
-      );
-    }
+    setError("");
     setApplications(next);
     setNotice(message);
   }
@@ -92,9 +70,9 @@ export default function Dashboard() {
     setForm(app ? { ...app } : { ...blank });
     dialog.current?.showModal();
   }
-  function save(event: FormEvent<HTMLFormElement>) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form.company.trim() || !form.position.trim()) return;
+    if (busy || !form.company.trim() || !form.position.trim()) return;
     const app: Application = {
       ...form,
       company: form.company.trim(),
@@ -103,13 +81,64 @@ export default function Dashboard() {
       notes: form.notes.trim(),
       id: editing?.id ?? crypto.randomUUID(),
     };
-    commit(
-      editing
-        ? applications.map((a) => (a.id === editing.id ? app : a))
-        : [app, ...applications],
-      editing ? "Application updated." : "Application added.",
-    );
-    dialog.current?.close();
+    setBusy(true);
+    setError("");
+    try {
+      const result = await saveApplication(app, !editing);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      commit(
+        editing
+          ? applications.map((a) => (a.id === editing.id ? app : a))
+          : [app, ...applications],
+        editing ? "Application updated." : "Application added.",
+      );
+      dialog.current?.close();
+    } catch {
+      setError(
+        "Could not connect. Your changes are still in the form; please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove() {
+    if (!deleting || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await deleteApplication(deleting.id);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      commit(
+        applications.filter((a) => a.id !== deleting.id),
+        "Application deleted.",
+      );
+      deleteDialog.current?.close();
+      setDeleting(null);
+    } catch {
+      setError("Could not connect. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function logout() {
+    try {
+      const result = await authClient.signOut();
+      if (result.error) {
+        setError("Could not log out. Please try again.");
+        return;
+      }
+      // Discard client caches containing the previous account's private data.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/login");
+    } catch {
+      setError("Could not log out. Please try again.");
+    }
   }
   function exportData() {
     const url = URL.createObjectURL(
@@ -179,8 +208,8 @@ export default function Dashboard() {
           <div className="profile">
             <span className="avatar">Y</span>
             <div>
-              <strong>Your workspace</strong>
-              <small>Local demo · Free plan</small>
+              <strong>{userName}</strong>
+              <small>Your account · Free plan</small>
             </div>
             <span className="online-dot" />
           </div>
@@ -196,8 +225,11 @@ export default function Dashboard() {
             </strong>
           </div>
           <span className="local-indicator">
-            <span className="live-dot" /> Stored on this device
+            <span className="live-dot" /> Saved to your account
           </span>
+          <button className="button secondary small" onClick={logout}>
+            Log out
+          </button>
         </header>
         <main className="dashboard-main">
           <div className="dashboard-title">
@@ -473,16 +505,17 @@ export default function Dashboard() {
               </span>
               <span>
                 <Check size={14} />{" "}
-                {error ? "Session only" : "Made for your next move"}
+                {error
+                  ? "Please check the message above"
+                  : "Made for your next move"}
               </span>
             </div>
           </section>
           <div className="privacy-note">
             <CircleHelp size={16} />
             <p>
-              This is your personal demo workspace. Data stays in this browser
-              and won’t sync across devices. Clearing browser data removes it.
-              Export a copy to keep a backup.
+              Your applications are saved to your account. Log in on another
+              device to access them. Export a copy whenever you need a backup.
             </p>
           </div>
         </main>
@@ -506,73 +539,88 @@ export default function Dashboard() {
           <p className="dialog-description">
             Keep the details together. Make your next move easier.
           </p>
-          <div className="form-grid">
-            <label>
-              Company <span>*</span>
-              <input
-                autoFocus
-                required
-                maxLength={120}
-                value={form.company}
-                onChange={(e) => setForm({ ...form, company: e.target.value })}
-                placeholder="e.g. Notion"
-              />
-            </label>
-            <label>
-              Position <span>*</span>
-              <input
-                required
-                maxLength={160}
-                value={form.position}
-                onChange={(e) => setForm({ ...form, position: e.target.value })}
-                placeholder="e.g. Product Design Intern"
-              />
-            </label>
-            <label>
-              Location
-              <input
-                maxLength={160}
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                placeholder="City or remote"
-              />
-            </label>
-            <label>
-              Deadline
-              <input
-                type="date"
-                min="1900-01-01"
-                max="9999-12-31"
-                value={form.deadline}
-                onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-              />
-            </label>
-            <label className="full-width">
-              Status
-              <select
-                aria-label="Status"
-                value={form.status}
-                onChange={(e) =>
-                  setForm({ ...form, status: e.target.value as Status })
-                }
-              >
-                {statuses.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-            <label className="full-width">
-              Notes
-              <textarea
-                aria-label="Notes"
-                rows={4}
-                maxLength={10000}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Contacts, next steps, or things to remember..."
-              />
-            </label>
-          </div>
+          {error && (
+            <div role="alert" className="error-banner">
+              {error}
+            </div>
+          )}
+          <fieldset disabled={busy} className="application-fields">
+            <div className="form-grid">
+              <label>
+                Company <span>*</span>
+                <input
+                  autoFocus
+                  required
+                  maxLength={120}
+                  value={form.company}
+                  onChange={(e) =>
+                    setForm({ ...form, company: e.target.value })
+                  }
+                  placeholder="e.g. Notion"
+                />
+              </label>
+              <label>
+                Position <span>*</span>
+                <input
+                  required
+                  maxLength={160}
+                  value={form.position}
+                  onChange={(e) =>
+                    setForm({ ...form, position: e.target.value })
+                  }
+                  placeholder="e.g. Product Design Intern"
+                />
+              </label>
+              <label>
+                Location
+                <input
+                  maxLength={160}
+                  value={form.location}
+                  onChange={(e) =>
+                    setForm({ ...form, location: e.target.value })
+                  }
+                  placeholder="City or remote"
+                />
+              </label>
+              <label>
+                Deadline
+                <input
+                  type="date"
+                  min="1900-01-01"
+                  max="9999-12-31"
+                  value={form.deadline}
+                  onChange={(e) =>
+                    setForm({ ...form, deadline: e.target.value })
+                  }
+                />
+              </label>
+              <label className="full-width">
+                Status
+                <select
+                  aria-label="Status"
+                  value={form.status}
+                  onChange={(e) =>
+                    setForm({ ...form, status: e.target.value as Status })
+                  }
+                >
+                  {statuses.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="full-width">
+                Notes
+                <textarea
+                  aria-label="Notes"
+                  rows={4}
+                  maxLength={10000}
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  placeholder="Contacts, next steps, or things to remember..."
+                />
+              </label>
+            </div>
+          </fieldset>
           <div className="dialog-actions">
             <button
               type="button"
@@ -584,9 +632,9 @@ export default function Dashboard() {
             <button
               className="button"
               type="submit"
-              disabled={!form.company.trim() || !form.position.trim()}
+              disabled={busy || !form.company.trim() || !form.position.trim()}
             >
-              {editing ? "Save changes" : "Add application"}
+              {busy ? "Saving…" : editing ? "Save changes" : "Add application"}
               <Check size={16} />
             </button>
           </div>
@@ -594,6 +642,11 @@ export default function Dashboard() {
       </dialog>
       <dialog ref={deleteDialog} className="delete-dialog">
         <h2>Delete this application?</h2>
+        {error && (
+          <div role="alert" className="error-banner">
+            {error}
+          </div>
+        )}
         <p>
           <strong>{deleting?.position}</strong> at{" "}
           <strong>{deleting?.company}</strong> will be permanently removed from
@@ -607,18 +660,7 @@ export default function Dashboard() {
           >
             Keep application
           </button>
-          <button
-            className="button danger"
-            onClick={() => {
-              if (deleting)
-                commit(
-                  applications.filter((a) => a.id !== deleting.id),
-                  "Application deleted.",
-                );
-              deleteDialog.current?.close();
-              setDeleting(null);
-            }}
-          >
+          <button className="button danger" disabled={busy} onClick={remove}>
             Delete
           </button>
         </div>

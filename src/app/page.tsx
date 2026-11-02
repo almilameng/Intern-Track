@@ -17,7 +17,8 @@ export default function Home() {
         <nav aria-label="Main navigation">
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
-          <Link href="/dashboard" className="button small">
+          <Link href="/login">Log in</Link>
+          <Link href="/signup" className="button small">
             Get started <ArrowRight size={16} />
           </Link>
         </nav>
@@ -38,12 +39,12 @@ export default function Home() {
               internship search, stay ahead of deadlines, and make your next
               move with confidence.
             </p>
-            <Link href="/dashboard" className="button">
+            <Link href="/signup" className="button">
               Start tracking for free <ArrowRight size={18} />
             </Link>
             <div className="hero-note">
-              <CheckCircle2 size={16} /> No account needed. Just a little
-              ambition.
+              <CheckCircle2 size={16} /> Your own account. Your next
+              opportunity.
             </div>
           </div>
           <div className="hero-visual">
@@ -167,12 +168,12 @@ export default function Home() {
               <span className="badge applied">Available now</span>
             </div>
             <div className="price">
-              $0 <span>/ free demo</span>
+              $0 <span>/ free</span>
             </div>
             <p>Everything you need to get organized.</p>
             <ul>
               {[
-                "Unlimited applications in this browser",
+                "Applications saved to your account",
                 "Search, filters, and progress overview",
                 "Deadlines and personal notes",
               ].map((t) => (
@@ -182,16 +183,16 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Link href="/dashboard" className="button w-full">
+            <Link href="/signup" className="button w-full">
               Get started <ArrowRight size={17} />
             </Link>
-            <small>Saved on this device. No signup or payment.</small>
+            <small>Free account. No payment required.</small>
           </div>
         </section>
         <section className="final-cta">
           <Sparkles size={26} />
           <h2>Your next opportunity starts with a little organization.</h2>
-          <Link href="/dashboard" className="button">
+          <Link href="/signup" className="button">
             Let’s make your next move <ArrowRight size={18} />
           </Link>
         </section>
@@ -199,7 +200,7 @@ export default function Home() {
       <footer>
         <Brand />
         <span>Created by Almila Meng</span>
-        <span>InternTrack · Local demo</span>
+        <span>InternTrack · Your next chapter</span>
       </footer>
     </div>
   );

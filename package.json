@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "db:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/migrate.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -12,21 +13,27 @@
     "format": "prettier --write src tests *.ts *.mjs package.json tsconfig.json"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "better-auth": "^1.7.15",
     "lucide-react": "^1.61.0",
     "next": "^16.4.3",
+    "pg": "^8.23.1",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.3",
     "prettier": "^3.9.10",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
 }

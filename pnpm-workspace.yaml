@@ -3,3 +3,4 @@ cacheDir: .pnpm-cache
 allowBuilds:
   unrs-resolver: true
   sharp: true
+  esbuild: true
